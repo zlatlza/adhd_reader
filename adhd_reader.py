@@ -68,17 +68,17 @@ def load_file():
 
 def load_last_session():
     global sentences, current_sentence_index, current_file_path
-    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-    if file_path:
-        state = load_state(os.path.join(SAVE_DIR, f"{os.path.basename(file_path)}.json"))
+    json_file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+    if json_file_path:
+        state = load_state(json_file_path)
         if state:
-            sentences = read_sentences_from_pdf(file_path)
-            current_file_path = file_path
+            current_file_path = state["file_path"]
+            sentences = read_sentences_from_pdf(current_file_path)
             current_sentence_index = state["current_sentence_index"]
             if sentences:
                 show_sentence()
         else:
-            messagebox.showinfo("Info", "No saved session found for this file.")
+            messagebox.showinfo("Info", "No saved session found in the selected file.")
 
 def save_notes():
     note_file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
