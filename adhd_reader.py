@@ -1,20 +1,31 @@
 import tkinter as tk
 from tkinter import scrolledtext, filedialog, messagebox
 from PyPDF2 import PdfReader
+from docx import Document
 import os
 import json
 
-def read_sentences_from_pdf(file_path):
+def read_sentences_from_file(file_path):
     try:
-        pdf_reader = PdfReader(open(file_path, 'rb'))
-        text = ''
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+        if file_path.endswith('.pdf'):
+            pdf_reader = PdfReader(open(file_path, 'rb'))
+            text = ''
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+        elif file_path.endswith('.txt'):
+            with open(file_path, 'r') as file:
+                text = file.read()
+        elif file_path.endswith('.docx'):
+            doc = Document(file_path)
+            text = '\n'.join([para.text for para in doc.paragraphs])
+        else:
+            raise ValueError("Unsupported file type")
+        
         sentences = text.split('. ')
         sentences = [sentence.strip() + '.' for sentence in sentences if sentence.strip()]
         return sentences
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to read the PDF file: {e}")
+        messagebox.showerror("Error", f"Failed to read the file: {e}")
         return []
 
 def show_sentence():
@@ -41,7 +52,8 @@ def save_state(file_path=None):
         file_path = os.path.join(SAVE_DIR, f"{os.path.basename(current_file_path)}.json")
     state = {
         "file_path": current_file_path,
-        "current_sentence_index": current_sentence_index
+        "current_sentence_index": current_sentence_index,
+        "notes": notes_area.get(1.0, tk.END)
     }
     with open(file_path, 'w') as file:
         json.dump(state, file)
@@ -55,14 +67,16 @@ def load_state(file_path):
 
 def load_file():
     global sentences, current_sentence_index, current_file_path
-    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
+    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf"), ("Text files", "*.txt"), ("Word files", "*.docx")])
     if file_path:
-        sentences = read_sentences_from_pdf(file_path)
+        sentences = read_sentences_from_file(file_path)
         current_file_path = file_path
         current_sentence_index = 0
         state = load_state(os.path.join(SAVE_DIR, f"{os.path.basename(file_path)}.json"))
         if state:
             current_sentence_index = state["current_sentence_index"]
+            notes_area.delete(1.0, tk.END)
+            notes_area.insert(tk.END, state["notes"])
         if sentences:
             show_sentence()
 
@@ -73,8 +87,10 @@ def load_last_session():
         state = load_state(json_file_path)
         if state:
             current_file_path = state["file_path"]
-            sentences = read_sentences_from_pdf(current_file_path)
+            sentences = read_sentences_from_file(current_file_path)
             current_sentence_index = state["current_sentence_index"]
+            notes_area.delete(1.0, tk.END)
+            notes_area.insert(tk.END, state["notes"])
             if sentences:
                 show_sentence()
         else:
@@ -93,7 +109,7 @@ def save_current_position():
         messagebox.showinfo("Info", "Current position saved.")
 
 root = tk.Tk()
-root.title("Sentence Reader and Notes")
+root.title("ADHD_Reader v1.2")
 
 reader_frame = tk.Frame(root)
 reader_frame.pack(padx=10, pady=10)
